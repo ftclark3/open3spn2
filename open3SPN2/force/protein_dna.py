@@ -278,6 +278,63 @@ class AMHgoProteinDNA(ProteinDNAForce):
             self.force.addBond(int(CB_protein['index'].values[0]), int(base_DNA['index'].values[0]), [gamma_ij, r_ijN])
             print(int(CB_protein['index'].values[0]), int(base_DNA['index'].values[0]), [gamma_ij, r_ijN])
 
+class NFkBBasePairBias(ProteinDNAForce):
+     """constrains protein to a particular base pair and its nearest neighbors"""
+    def __init__(self, dna, protein, indices, forceGroup=16):
+        self.forceGroup = forceGroup
+        self.indices = indices
+        super().__init__(dna,protein)
+    def reset(self):
+        energy = "4.184*(theta_01_comp_ip1+theta_01_comp_im1+theta_0inf_comp_ip2+theta_0inf_comp_im2)*"
+        # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
+        E1 = "(4.184*5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10)" # shifted so that minimum is y=0
+        E2 = "(4.184*50*(tanh(30*((x)-(3/2)))+tanh(30*(-(x)-(3/2))))+100)" # shifted so that minimum is y=0
+        # but negative arguments don't make sense because we only want these to activate
+        # when the component of the (protein-bp1) vector along the (bp2-bp1) vector is positive,
+        # so we multiply by the openmm step() function, which is 1 when x>=0 and 0 otherwise.
+        E1_positive = f'step(x)*{E1}'
+        E2_positive = f'step(x)*{E2}'
+        #     this does not lead to any differentiability issues because E1, E2, and their derivatives are 0 at x=0.
+        # Now, we sum the energy contributions from the (protein-im1)->(im2-im1), (protein-i)->(im1-i), (protein-i)->(ip1-i), and (protein-ip1)->(ip2-ip1) projections,
+        #     where im1 is the coordinates of base pair i-1, ip1 is the coordinates of base pair i+1, etc.
+        # If the protein is between base pairs i-1 and i+1, we expect one of the four components to be positive (either ip1 or im1)
+        #     and therefore have its energy considered (have its step function activated).
+        #     The energy will be about 0 if the target base pair, i, is the closest base pair, while there will be a penalty 
+        #     if i-1 or i+1 is closer than i.
+        # If the protein is between i-1 and i-2 or i+1 and i+2, then we expect both i+1 and i+2 to be activated (meaning their step functions equal 1),
+        #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
+        #    closer to i-2 than i-1 (or closer to i+2 than i+1).
+        energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
+        # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity
+        theta_0inf = '(1/2)*(tanh(70*x)+1)'
+        # plug components of DNA-protein vectors along DNA-DNA vectors into theta
+        theta_definitions = f';theta_0inf_comp_ip1={theta_0inf.replace("x",comp_ip1)};theta_0inf_comp_im1={theta_0inf.replace("x",comp_im1)};theta_0inf_comp_ip2={theta_0inf.replace("x",comp_ip2)};theta_0inf_comp_im2={theta_0inf.replace("x",comp_im2)}'
+        # define components based on dot product
+        # p1, p2: phosphates on i-2
+        # p3, p4: phosphates on i-1
+        # p5, p6: phosphates on i
+        # p7, p8: phosphates on i+1
+        # p9, p10: phosphates on i+2
+        # p11, p12: DD residues on opposites sides of interface
+        #comp_definitions = ';comp_im2=im2im1x*proteinbm1x+im2im1y*proteinbm1y+im2im1z*proteinbm1z'
+        #                # im2 vector - im1 vector                             im1 vector - i vector                     # ip1 vector - i vector                   # ip2 vector - ip1 vector
+        #differences = ';im2im1x=bm2x-bm1x;im2im1y=bm2y-bm1y;im2im1z=bm2z-bm1z;im1ix=bm1x-bx;im1iy=bm1y-by;im1iz=bm1z-bz;ip1ix=bp1x-bx;ip1iy=bp1y-by;ip1iz=bp1z-bz;ip2ip1x=bp2x-bp1x;ip2ip1y=bp2y-bp1y;ip2ip1z=bp2z-bp1z;proteinbm1x=proteinx-bm1x;proteinbm1y=proteiny-bm1y;proteinbm1z=proteinz-bm1z;proteinbx=proteinx-bx;proteinby=proteiny-by;proteinbz=proteinz-bz;proteinbp1x=proteinx-bp1x;proteinbp1y=proteiny-bp1y;proteinbp1z=proteinz-bp1z'
+        #avg_definitions = ';bm2x=(x1+x2)/2;bm2y=(y1+y2)/2;bm2z=(z1+z2)/2;bm1x=(x3+x4)/2;bm1y=(y3+y4)/2;bm1z=(z3+z4)/2;bx=(x5+x6)/2;by=(y5+y6)/2;bz=(z5+z6)/2;bp1x=(x7+x8)/2;bp1y=(y7+y8)/2;bp1z=(z7+z8)/2;bp2x=(x9+10)/2;bp2y=(y9+y10)/2;bp2z=(z9+z10)/2;proteinx=(x11+x12)/2;proteiny=(y11+y12)/2;proteinz=(z11+z12)/2'
+        #force = openmm.CustomCompoundBondForce(12,f'{energy}{theta_definitions}{comp_definitions}{differences}{avg_definitions}')
+
+        comp_definitions=';comp_ip1=pointdistance(bx,by,bz,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bx,by,bz,bp1x,bp1y,bp1z))/pointdistance(bx,by,bz,bp1x,bp1y,bp1z)\
+;comp_im1=pointdistance(bx,by,bz,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bx,by,bz,bm1x,bm1y,bm1z))/pointdistance(bx,by,bz,bm1x,bm1y,bm1z)\
+;comp_ip2=pointdistance(bp1x,bp1y,bp1z,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bp1x,bp1y,bp1z,bp2x,bp2y,bp2z))/pointdistance(bp1x,bp1y,bp1z,bp2x,bp2y,bp2z)\
+;comp_im2=pointdistance(bm1x,bm1y,bm1z,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bm1x,bm1y,bm1z,bm2x,bm2y,bm2z))/pointdistance(bm1x,bm1y,bm1z,bm2x,bm2y,bm2z)'
+        avg_definitions = ';bm2x=(x1+x2)/2;bm2y=(y1+y2)/2;bm2z=(z1+z2)/2;bm1x=(x3+x4)/2;bm1y=(y3+y4)/2;bm1z=(z3+z4)/2;bx=(x5+x6)/2;by=(y5+y6)/2;bz=(z5+z6)/2;bp1x=(x7+x8)/2;bp1y=(y7+y8)/2;bp1z=(z7+z8)/2;bp2x=(x9+10)/2;bp2y=(y9+y10)/2;bp2z=(z9+z10)/2;proteinx=(x11+x12)/2;proteiny=(y11+y12)/2;proteinz=(z11+z12)/2'
+        force = openmm.CustomCompoundBondForce(12,f'{energy}{theta_definitions}{comp_definitions}{avg_definitions}')
+        force.addBond(self.indices)
+        force.setUsesPeriodicBoundaryConditions(True)
+        force.setForceGroup(16)
+        self.force = force
+
+    def defineInteraction(self):
+        pass
 
 #class AMHgoProteinDNA(ProteinDNAForce):
 #    """ Protein-DNA amhgo potential (Xinyu)"""

@@ -279,12 +279,21 @@ class AMHgoProteinDNA(ProteinDNAForce):
             print(int(CB_protein['index'].values[0]), int(base_DNA['index'].values[0]), [gamma_ij, r_ijN])
 
 class NFkBBasePairBias(ProteinDNAForce):
-     """constrains protein to a particular base pair and its nearest neighbors"""
+    """constrains protein to a particular base pair and its nearest neighbors"""
     def __init__(self, dna, protein, indices, forceGroup=16):
         self.forceGroup = forceGroup
+        assert len(indices)==12, indices
         self.indices = indices
         super().__init__(dna,protein)
     def reset(self):
+        """
+        # got unhelpful segfault with this function as originally written so 
+        # experimenting here
+        self.force = openmm.CustomCompoundBondForce(10,'1')
+        print(f'self.indices: {self.indices}')
+        self.force.addBond(list(range(10))
+        """
+        """
         energy = "4.184*(theta_01_comp_ip1+theta_01_comp_im1+theta_0inf_comp_ip2+theta_0inf_comp_im2)*"
         # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
         E1 = "(4.184*5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10)" # shifted so that minimum is y=0
@@ -304,11 +313,14 @@ class NFkBBasePairBias(ProteinDNAForce):
         # If the protein is between i-1 and i-2 or i+1 and i+2, then we expect both i+1 and i+2 to be activated (meaning their step functions equal 1),
         #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
         #    closer to i-2 than i-1 (or closer to i+2 than i+1).
-        energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
+        ####################################################################################################################################
+        #energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
+        energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
+        ########################################################################################################################################
         # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity
         theta_0inf = '(1/2)*(tanh(70*x)+1)'
         # plug components of DNA-protein vectors along DNA-DNA vectors into theta
-        theta_definitions = f';theta_0inf_comp_ip1={theta_0inf.replace("x",comp_ip1)};theta_0inf_comp_im1={theta_0inf.replace("x",comp_im1)};theta_0inf_comp_ip2={theta_0inf.replace("x",comp_ip2)};theta_0inf_comp_im2={theta_0inf.replace("x",comp_im2)}'
+        theta_definitions = f';theta_0inf_comp_ip1={theta_0inf.replace("x","comp_ip1")};theta_0inf_comp_im1={theta_0inf.replace("x","comp_im1")};theta_0inf_comp_ip2={theta_0inf.replace("x","comp_ip2")};theta_0inf_comp_im2={theta_0inf.replace("x","comp_im2")}'
         # define components based on dot product
         # p1, p2: phosphates on i-2
         # p3, p4: phosphates on i-1
@@ -329,10 +341,10 @@ class NFkBBasePairBias(ProteinDNAForce):
         avg_definitions = ';bm2x=(x1+x2)/2;bm2y=(y1+y2)/2;bm2z=(z1+z2)/2;bm1x=(x3+x4)/2;bm1y=(y3+y4)/2;bm1z=(z3+z4)/2;bx=(x5+x6)/2;by=(y5+y6)/2;bz=(z5+z6)/2;bp1x=(x7+x8)/2;bp1y=(y7+y8)/2;bp1z=(z7+z8)/2;bp2x=(x9+10)/2;bp2y=(y9+y10)/2;bp2z=(z9+z10)/2;proteinx=(x11+x12)/2;proteiny=(y11+y12)/2;proteinz=(z11+z12)/2'
         force = openmm.CustomCompoundBondForce(12,f'{energy}{theta_definitions}{comp_definitions}{avg_definitions}')
         force.addBond(self.indices)
-        force.setUsesPeriodicBoundaryConditions(True)
+        #force.setUsesPeriodicBoundaryConditions(True)
         force.setForceGroup(16)
         self.force = force
-
+        """ 
     def defineInteraction(self):
         pass
 

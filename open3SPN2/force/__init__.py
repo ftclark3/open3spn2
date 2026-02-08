@@ -15,3 +15,4 @@ from .protein_dna import ExclusionProteinDNA
 from .protein_dna import ElectrostaticsProteinDNA
 from .protein_dna import AMHgoProteinDNA
 from .protein_dna import String_length_ProteinDNA
+from .protein_dna import NFkBBasePairBias

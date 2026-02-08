@@ -293,11 +293,9 @@ class NFkBBasePairBias(ProteinDNAForce):
         print(f'self.indices: {self.indices}')
         self.force.addBond(list(range(10))
         """
-        """
-        energy = "4.184*(theta_01_comp_ip1+theta_01_comp_im1+theta_0inf_comp_ip2+theta_0inf_comp_im2)*"
         # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
-        E1 = "(4.184*5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10)" # shifted so that minimum is y=0
-        E2 = "(4.184*50*(tanh(30*((x)-(3/2)))+tanh(30*(-(x)-(3/2))))+100)" # shifted so that minimum is y=0
+        E1 = "(4.184*(5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10))" # shifted so that minimum is y=0
+        E2 = "(4.184*(50*(tanh(30*((x)-(3/2)))+tanh(30*(-(x)-(3/2))))+100))" # shifted so that minimum is y=0
         # but negative arguments don't make sense because we only want these to activate
         # when the component of the (protein-bp1) vector along the (bp2-bp1) vector is positive,
         # so we multiply by the openmm step() function, which is 1 when x>=0 and 0 otherwise.
@@ -314,8 +312,8 @@ class NFkBBasePairBias(ProteinDNAForce):
         #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
         #    closer to i-2 than i-1 (or closer to i+2 than i+1).
         ####################################################################################################################################
-        #energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
-        energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
+        energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
+        #energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
         ########################################################################################################################################
         # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity
         theta_0inf = '(1/2)*(tanh(70*x)+1)'
@@ -344,7 +342,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         #force.setUsesPeriodicBoundaryConditions(True)
         force.setForceGroup(16)
         self.force = force
-        """ 
+         
     def defineInteraction(self):
         pass
 

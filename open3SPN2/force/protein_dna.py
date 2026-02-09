@@ -295,7 +295,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         """
         # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
         E1 = "(4.184*(5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10))" # shifted so that minimum is y=0
-        E2 = "(4.184*(50*(tanh(30*((x)-(3/2)))+tanh(30*(-(x)-(3/2))))+100))" # shifted so that minimum is y=0
+        E2 = "(4.184*(50*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+100))" # shifted so that minimum is y=0
         # but negative arguments don't make sense because we only want these to activate
         # when the component of the (protein-bp1) vector along the (bp2-bp1) vector is positive,
         # so we multiply by the openmm step() function, which is 1 when x>=0 and 0 otherwise.

@@ -295,8 +295,13 @@ class NFkBBasePairBias(ProteinDNAForce):
         """
         # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
         E1 = "(4.184*(5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10))" # shifted so that minimum is y=0
-        E2 = "(4.184*(50*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+100))" # shifted so that minimum is y=0
-        # but negative arguments don't make sense because we only want these to activate
+        #E2 = "(4.184*(50*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+100))" # shifted so that minimum is y=0
+        # the above E2 potential seems to be too steep for our normal timestep of 5 fs,
+        # so I'm making it less steep and moving the transition point further out;
+        # this will result in some frames being closest to i-2 or i+2 even though our goal
+        # it for it to be closest to i-1 or i+1 or i, but these frames can be thrown out during analyis
+        E2 = "(4.184*(50*(tanh(10*((x)-(0.8)))+tanh(10*(-(x)-(0.8))))+100))" # shifted so that minimum is y=0
+        # negative arguments don't make sense because we only want these to activate
         # when the component of the (protein-bp1) vector along the (bp2-bp1) vector is positive,
         # so we multiply by the openmm step() function, which is 1 when x>=0 and 0 otherwise.
         E1_positive = f'step(x)*{E1}'

@@ -317,7 +317,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
         #    closer to i-2 than i-1 (or closer to i+2 than i+1).
         ####################################################################################################################################
-        energy = f'{E1_positive.replace("x","theta_0inf_comp_ip1")}+{E1_positive.replace("x","theta_0inf_comp_im1")}+{E2_positive.replace("x","theta_0inf_comp_ip2")}+{E2_positive.replace("x","theta_0inf_comp_ip2")}'
+        energy = f'{E1_positive.replace("x","theta_0inf_comp_ip1")}+{E1_positive.replace("x","theta_0inf_comp_im1")}+{E2_positive.replace("x","theta_0inf_comp_ip2")}+{E2_positive.replace("x","theta_0inf_comp_im2")}'
         #energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
         ########################################################################################################################################
         # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity

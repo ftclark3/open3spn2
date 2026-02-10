@@ -317,7 +317,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
         #    closer to i-2 than i-1 (or closer to i+2 than i+1).
         ####################################################################################################################################
-        energy = f'{E1.replace("x","theta_0inf_comp_ip1")}+{E1.replace("x","theta_0inf_comp_im1")}+{E2.replace("x","theta_0inf_comp_ip2")}+{E2.replace("x","theta_0inf_comp_ip2")}'
+        energy = f'{E1_positive.replace("x","theta_0inf_comp_ip1")}+{E1_positive.replace("x","theta_0inf_comp_im1")}+{E2_positive.replace("x","theta_0inf_comp_ip2")}+{E2_positive.replace("x","theta_0inf_comp_ip2")}'
         #energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
         ########################################################################################################################################
         # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity
@@ -341,7 +341,7 @@ class NFkBBasePairBias(ProteinDNAForce):
 ;comp_im1=pointdistance(bx,by,bz,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bx,by,bz,bm1x,bm1y,bm1z))/pointdistance(bx,by,bz,bm1x,bm1y,bm1z)\
 ;comp_ip2=pointdistance(bp1x,bp1y,bp1z,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bp1x,bp1y,bp1z,bp2x,bp2y,bp2z))/pointdistance(bp1x,bp1y,bp1z,bp2x,bp2y,bp2z)\
 ;comp_im2=pointdistance(bm1x,bm1y,bm1z,proteinx,proteiny,proteinz)*cos(pointangle(proteinx,proteiny,proteinz,bm1x,bm1y,bm1z,bm2x,bm2y,bm2z))/pointdistance(bm1x,bm1y,bm1z,bm2x,bm2y,bm2z)'
-        avg_definitions = ';bm2x=(x1+x2)/2;bm2y=(y1+y2)/2;bm2z=(z1+z2)/2;bm1x=(x3+x4)/2;bm1y=(y3+y4)/2;bm1z=(z3+z4)/2;bx=(x5+x6)/2;by=(y5+y6)/2;bz=(z5+z6)/2;bp1x=(x7+x8)/2;bp1y=(y7+y8)/2;bp1z=(z7+z8)/2;bp2x=(x9+10)/2;bp2y=(y9+y10)/2;bp2z=(z9+z10)/2;proteinx=(x11+x12)/2;proteiny=(y11+y12)/2;proteinz=(z11+z12)/2'
+        avg_definitions = ';bm2x=(x1+x2)/2;bm2y=(y1+y2)/2;bm2z=(z1+z2)/2;bm1x=(x3+x4)/2;bm1y=(y3+y4)/2;bm1z=(z3+z4)/2;bx=(x5+x6)/2;by=(y5+y6)/2;bz=(z5+z6)/2;bp1x=(x7+x8)/2;bp1y=(y7+y8)/2;bp1z=(z7+z8)/2;bp2x=(x9+x10)/2;bp2y=(y9+y10)/2;bp2z=(z9+z10)/2;proteinx=(x11+x12)/2;proteiny=(y11+y12)/2;proteinz=(z11+z12)/2'
         force = openmm.CustomCompoundBondForce(12,f'{energy}{theta_definitions}{comp_definitions}{avg_definitions}')
         force.addBond(self.indices)
         #force.setUsesPeriodicBoundaryConditions(True)

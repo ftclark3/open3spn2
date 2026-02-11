@@ -294,7 +294,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         self.force.addBond(list(range(10))
         """
         # mathematically, E1 and E2 are even (E1(x)==E1(-x) and E2(x)==E2(-x))
-        E1 = "(4.184*(5*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+10))" # shifted so that minimum is y=0
+        E1 = "(4.184*(2*5*(tanh(30*((x)-(0.6)))+tanh(30*(-(x)-(0.6))))+2*10))" # shifted so that minimum is y=0
         #E2 = "(4.184*(50*(tanh(30*((x)-(1/2)))+tanh(30*(-(x)-(1/2))))+100))" # shifted so that minimum is y=0
         # the above E2 potential seems to be too steep for our normal timestep of 5 fs,
         # so I'm making it less steep and moving the transition point further out;
@@ -317,7 +317,7 @@ class NFkBBasePairBias(ProteinDNAForce):
         #    or both i-1 and i-2 could be activated. The protein will always pay the E1 penalty. It will pay the E2 penalty when it is
         #    closer to i-2 than i-1 (or closer to i+2 than i+1).
         ####################################################################################################################################
-        energy = f'{E1_positive.replace("x","comp_ip1")}+{E1_positive.replace("x","comp_im1")}+{E2_positive.replace("x","comp_ip2")}+{E2_positive.replace("x","comp_im2")}'
+        energy = f'{E1_positive.replace("x","comp_ip1")}+{E1_positive.replace("x","comp_im1")}'
         #energy = '4.184*pointdistance(bx,by,bz,proteinx,proteiny,proteinz)'
         ########################################################################################################################################
         # define switching function that turns on (quickly goes from 0 to 1) when input is between 0 and infinity

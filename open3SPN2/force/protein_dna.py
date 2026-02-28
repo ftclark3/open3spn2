@@ -351,6 +351,56 @@ class NFkBBasePairBias(ProteinDNAForce):
     def defineInteraction(self):
         pass
 
+class NFkBBasePairBias_v2(ProteinDNAForce):
+    """Constrains protein to a particular base pair and its nearest neighbors.
+       
+       Since we're using base pair pairs (i,i+5) and (i,i-5) to define two helical axes,
+       we want to penalize the protein when it strays into being closest to i+2 or i-2,
+       so that it's spending most of its time on i, i-1, or i+1. 
+       
+       This threshold
+       is about 3/10ths of the way to i+5 (between -1/10 and 1/10 it's closest to i,
+       1/10 to 3/10ths closest to i+1) but this isn't exact because certain base pairs
+       can narrow their profile along the i to i+5 axis while others might take up 
+       more of that length. Generally, these values will fluctuate over time. 
+
+       So, to be safe, we won't have the bias kick in until we're about 1/2 of the way 
+       to base pair i+5. To accomplish this, we set the shift parameter to 0.85. 
+       The bias then slopes up smoothly.
+       """
+    def __init__(self, dna, protein, indices, forceGroup=16):
+        """
+        indices : list of lists
+            Each sublist is a list of particle indices whose centroid should be used.
+            The first sublist is the i-5 position, the second sublist is the i position,
+            the third sublist is the i+5 position, and the fourth sublist is the protein position
+        """
+        self.forceGroup = forceGroup
+        assert len(indices)==4, f'indices must be a list of 4 lists but was {indices}'
+        self.indices = indices
+        super().__init__(dna,protein)
+
+    def reset(self):
+        E1 = '(4.184*100*(tanh(20*(x-.75))+tanh(20*(-1*(x+.75)))+2))' # shifted vertically so that minimum is y=0
+        E1_positive = f'step(x)*{E1}' # this does not lead to any differentiability issues because E1 and its derivative is 0 at x=0.
+        energy = f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'
+        # switches between paying attention to the (i,i+5) vector and the (i,i-5) vector, depending on which is closer
+        #     when the argument is positive, the function is positive, 
+        #     so this is 1 when we're closer to g3 (i+5) and 0 when we're closer to g1 (i-5)
+        closer_to_ip5_definition = ';(0.5*(tanh(70*(distance(g4,g1)-distance(g4,g3)))+1))' 
+        comp_definitions=';comp_ip5=distance(g2,g4)*cos(angle(g4,g2,g3))/distance(g2,g3);comp_im5=distance(g2,g4)*cos(angle(g4,g2,g1))/distance(g2,g1)'
+        force = openmm.CustomCentroidBondForce(4,f'{energy}{closer_to_ip5_definition}{comp_definitions}')
+        forces.addGroup(self.indices[0])
+        forces.addGroup(self.indices[1])
+        forces.addGroup(self.indices[2])
+        forces.addGroup(self.indices[3])
+        force.addBond([0,1,2,3])
+        force.setForceGroup(16)
+        self.force = force
+         
+    def defineInteraction(self):
+        pass
+
 #class AMHgoProteinDNA(ProteinDNAForce):
 #    """ Protein-DNA amhgo potential (Xinyu)"""
 #    def __init__(self, dna, protein, chain_protein='A', chain_DNA='B', k_amhgo_PD=1*unit.kilocalorie_per_mole,

@@ -16,3 +16,4 @@ from .protein_dna import ElectrostaticsProteinDNA
 from .protein_dna import AMHgoProteinDNA
 from .protein_dna import String_length_ProteinDNA
 from .protein_dna import NFkBBasePairBias
+from .protein_dna import NFkBBasePairBias_v2

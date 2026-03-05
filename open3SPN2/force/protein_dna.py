@@ -389,13 +389,13 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
         # switches between paying attention to the (i,i+5) vector and the (i,i-5) vector, depending on which is closer
         #     when the argument is positive, the function is positive, 
         #     so this is 1 when we're closer to g3 (i+5) and 0 when we're closer to g1 (i-5)
-        closer_to_ip5_definition = ';(0.5*(tanh(70*(distance(g4,g1)-distance(g4,g3)))+1))' 
+        closer_to_ip5_definition = ';closer_to_ip5=0.5*(tanh(70*(distance(g4,g1)-distance(g4,g3)))+1)' 
         comp_definitions=';comp_ip5=distance(g2,g4)*cos(angle(g4,g2,g3))/distance(g2,g3);comp_im5=distance(g2,g4)*cos(angle(g4,g2,g1))/distance(g2,g1)'
         force = openmm.CustomCentroidBondForce(4,f'{energy}{closer_to_ip5_definition}{comp_definitions}')
-        forces.addGroup(self.indices[0])
-        forces.addGroup(self.indices[1])
-        forces.addGroup(self.indices[2])
-        forces.addGroup(self.indices[3])
+        force.addGroup(self.indices[0])
+        force.addGroup(self.indices[1])
+        force.addGroup(self.indices[2])
+        force.addGroup(self.indices[3])
         force.addBond([0,1,2,3])
         force.setForceGroup(self.forceGroup)
         self.force = force

@@ -676,7 +676,8 @@ forces = dict(Bond=Bond,
 
 protein_dna_forces=dict(ExclusionProteinDNA=ExclusionProteinDNA,
                         ElectrostaticsProteinDNA=ElectrostaticsProteinDNA,
-                        NFkBBasePairBias=NFkBBasePairBias)
+                        NFkBBasePairBias=NFkBBasePairBias, 
+                        NFkBBasePairBias_v2=NFkBBasePairBias_v2)
 
 
 

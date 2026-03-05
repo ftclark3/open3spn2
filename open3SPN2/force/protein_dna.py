@@ -372,8 +372,10 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
         """
         indices : list of lists
             Each sublist is a list of particle indices whose centroid should be used.
-            The first sublist is the i-5 position, the second sublist is the i position,
-            the third sublist is the i+5 position, and the fourth sublist is the protein position
+            The first sublist is the i-5 position, 
+            the second sublist is the i position,
+            the third sublist is the i+5 position, and the
+            fourth sublist is the protein position
         """
         self.forceGroup = forceGroup
         assert len(indices)==4, f'indices must be a list of 4 lists but was {indices}'
@@ -395,7 +397,7 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
         forces.addGroup(self.indices[2])
         forces.addGroup(self.indices[3])
         force.addBond([0,1,2,3])
-        force.setForceGroup(16)
+        force.setForceGroup(self.forceGroup)
         self.force = force
          
     def defineInteraction(self):

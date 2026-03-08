@@ -372,10 +372,12 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
         """
         indices : list of lists
             Each sublist is a list of particle indices whose centroid should be used.
-            The first sublist is the i-5 position, 
-            the second sublist is the i position,
-            the third sublist is the i+5 position, and the
-            fourth sublist is the protein position
+            While python uses 0-indexed lists, openMM uses 1-indexed atom/group indices.
+            The meanings of the different groups are:
+            g1: i-5 position 
+            g2: i position
+            g3: i+5 position
+            g4: protein position
         """
         self.forceGroup = forceGroup
         assert len(indices)==4, f'indices must be a list of 4 lists but was {indices}'
@@ -385,17 +387,19 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
     def reset(self):
         E1 = '(4.184*100*(tanh(20*(x-.75))+tanh(20*(-1*(x+.75)))+2))' # shifted vertically so that minimum is y=0
         E1_positive = f'step(x)*{E1}' # this does not lead to any differentiability issues because E1 and its derivative is 0 at x=0.
-        energy = f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'
+        energy = f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'#f'4.184*{E1_positive.replace("x","comp_im5")}'#f'4.184*{E1_positive.replace("x","comp_ip5")}'#'4.184*comp_im5'#'4.184*comp_ip5'#'4.184*closer_to_ip5'#f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'#'4.184*x1'#'4.184*distance(g4,g1)'#f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'
         # switches between paying attention to the (i,i+5) vector and the (i,i-5) vector, depending on which is closer
         #     when the argument is positive, the function is positive, 
         #     so this is 1 when we're closer to g3 (i+5) and 0 when we're closer to g1 (i-5)
         closer_to_ip5_definition = ';closer_to_ip5=0.5*(tanh(70*(distance(g4,g1)-distance(g4,g3)))+1)' 
         comp_definitions=';comp_ip5=distance(g2,g4)*cos(angle(g4,g2,g3))/distance(g2,g3);comp_im5=distance(g2,g4)*cos(angle(g4,g2,g1))/distance(g2,g1)'
         force = openmm.CustomCentroidBondForce(4,f'{energy}{closer_to_ip5_definition}{comp_definitions}')
-        force.addGroup(self.indices[0])
-        force.addGroup(self.indices[1])
-        force.addGroup(self.indices[2])
-        force.addGroup(self.indices[3])
+        force.addGroup(self.indices[0], [1 for _ in self.indices[0]]) # weight all particles equally for centroid
+        #assert set(self.indices[0]) == set([3502,3503,3504,3954,3955,3956]), f'self.indices[0] was {self.indices[0]}'
+        force.addGroup(self.indices[1], [1 for _ in self.indices[1]])
+        force.addGroup(self.indices[2], [1 for _ in self.indices[2]])
+        #print(f'self.indices[3]: {self.indices[3]}')
+        force.addGroup(self.indices[3], [1 for _ in self.indices[3]])#[3954]
         force.addBond([0,1,2,3])
         force.setForceGroup(self.forceGroup)
         self.force = force

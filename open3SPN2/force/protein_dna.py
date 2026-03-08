@@ -385,7 +385,8 @@ class NFkBBasePairBias_v2(ProteinDNAForce):
         super().__init__(dna,protein)
 
     def reset(self):
-        E1 = '(4.184*100*(tanh(20*(x-.75))+tanh(20*(-1*(x+.75)))+2))' # shifted vertically so that minimum is y=0
+        E1 = '(4.184*100*(tanh(40*(x-.45))+tanh(40*(-1*(x+.45)))+2))' # shifted vertically so that minimum is y=0
+        #E1 = '(4.184*100*(tanh(20*(x-.75))+tanh(20*(-1*(x+.75)))+2))' # shifted vertically so that minimum is y=0
         E1_positive = f'step(x)*{E1}' # this does not lead to any differentiability issues because E1 and its derivative is 0 at x=0.
         energy = f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'#f'4.184*{E1_positive.replace("x","comp_im5")}'#f'4.184*{E1_positive.replace("x","comp_ip5")}'#'4.184*comp_im5'#'4.184*comp_ip5'#'4.184*closer_to_ip5'#f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'#'4.184*x1'#'4.184*distance(g4,g1)'#f'closer_to_ip5*{E1_positive.replace("x","comp_ip5")}+(1-closer_to_ip5)*{E1_positive.replace("x","comp_im5")}'
         # switches between paying attention to the (i,i+5) vector and the (i,i-5) vector, depending on which is closer

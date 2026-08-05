@@ -134,8 +134,11 @@ class EnvelopingDistributionSampling:
         self._mutant_forces = []  # list of dicts: for each mutant, {force_name: force_wrapper}
         self.cvforce = None
 
-    def _collect_force_objects(self, fwrap):
-        """Return list of openmm.Force instances found on a force wrapper object."""
+    @staticmethod
+    def _collect_force_objects(fwrap):
+        """Return list of openmm.Force instances found on a force wrapper object
+           (i.e. the multiple Force objects that are associated with the 
+           cross stacking and base pairing forces)"""
         found = []
         for v in fwrap.__dict__.values():
             if isinstance(v, openmm.Force):
@@ -195,7 +198,7 @@ class EnvelopingDistributionSampling:
                 # Skip Electrostatics (we've added a single copy already)
                 if fname == 'Electrostatics':
                     continue
-                force_objs = self._collect_force_objects(fwrap)
+                force_objs = EnvelopingDistributionSampling._collect_force_objects(fwrap)
                 if not force_objs:
                     # If no underlying openmm Force found, try adding the wrapper itself if it
                     # behaves like an openmm.Force

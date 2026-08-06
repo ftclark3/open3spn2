@@ -196,7 +196,17 @@ class EnvelopingDistributionSampling:
             for force_name, WrapperClass in forces.items(): # ignore sequence-independent_forces
                 if force_name == 'Electrostatics':
                     continue
-                sequence_dependent_forces[f"{force_name}_{mutant_sequence_index}"] = WrapperClass(mutant)
+                elif force_name == 'BasePair':
+                    open3spn2_force = WrapperClass(mutant)
+                    for force_index, openmm_force in open3spn2_force.forces.items():
+                        sequence_dependent_forces[f"{force_name}-{force_index}_{mutant_sequence_index}"] = openmm_force
+                elif force_name == 'CrossStacking':
+                    open3spn2_force = WrapperClass(mutant)
+                    for force_index, (openmm_force_c1, openmm_force_c2) in open3spn2_force.crossStackingForces.items():
+                        sequence_dependent_forces[f"{force_name}-{force_index}-c1_{mutant_sequence_index}"] = openmm_force_c1
+                        sequence_dependent_forces[f"{force_name}-{force_index}-c2_{mutant_sequence_index}"] = openmm_force_c2
+                else:
+                    sequence_dependent_forces[f"{force_name}_{mutant_sequence_index}"] = WrapperClass(mutant).force
 
         # set up energy expression to be used for the CustomCVForce
         expr_start = '-0.0083145*300*log('
@@ -226,7 +236,7 @@ class EnvelopingDistributionSampling:
         cv = openmm.CustomCVForce(expr)
         cv.setForceGroup(self.force_group)
         for force_name, force_object in sequence_dependent_forces.items():
-            force_object.addForce(cv, name=force_name)
+            cv.addCollectiveVariable(force_name, force_object) 
 
         # Add the enveloping distribution sampling CV force to the openmm system
         system.addForce(cv)

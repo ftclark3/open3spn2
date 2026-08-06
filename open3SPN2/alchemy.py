@@ -199,12 +199,12 @@ class EnvelopingDistributionSampling:
                 elif force_name == 'BasePair':
                     open3spn2_force = WrapperClass(mutant)
                     for force_index, openmm_force in open3spn2_force.forces.items():
-                        sequence_dependent_forces[f"{force_name}-{force_index}_{mutant_sequence_index}"] = openmm_force
+                        sequence_dependent_forces[f"{force_name}_{force_index}_{mutant_sequence_index}"] = openmm_force
                 elif force_name == 'CrossStacking':
                     open3spn2_force = WrapperClass(mutant)
                     for force_index, (openmm_force_c1, openmm_force_c2) in open3spn2_force.crossStackingForces.items():
-                        sequence_dependent_forces[f"{force_name}-{force_index}-c1_{mutant_sequence_index}"] = openmm_force_c1
-                        sequence_dependent_forces[f"{force_name}-{force_index}-c2_{mutant_sequence_index}"] = openmm_force_c2
+                        sequence_dependent_forces[f"{force_name}_{force_index}_c1_{mutant_sequence_index}"] = openmm_force_c1
+                        sequence_dependent_forces[f"{force_name}_{force_index}_c2_{mutant_sequence_index}"] = openmm_force_c2
                 else:
                     sequence_dependent_forces[f"{force_name}_{mutant_sequence_index}"] = WrapperClass(mutant).force
 

@@ -124,42 +124,14 @@ class EnvelopingDistributionSampling:
         Force group to assign to the resulting CustomCVForce (default: 30).
     """
 
+    
     def __init__(self, starting_dna, mutant_sets, force_group=30):
         self.starting_dna = starting_dna
         # Build mutant DNA objects
-        self.mutants = [starting_dna.create_mutant(m) for m in mutant_sets]
-        self.mutant_sets = mutant_sets
+        self.dnas = [starting_dna] + [starting_dna.create_mutant(m) for m in mutant_sets]
         self.force_group = force_group
-        # Storage for created force wrappers and the collective-variable force
-        self._mutant_forces = []  # list of dicts: for each mutant, {force_name: force_wrapper}
         self._cvforce = None
 
-    @staticmethod
-    def _collect_force_objects(fwrap):
-        """Return list of openmm.Force instances found on a force wrapper object
-           (i.e. the multiple Force objects that are associated with the 
-           cross stacking and base pairing forces)"""
-        found = []
-        for v in fwrap.__dict__.values():
-            if isinstance(v, openmm.Force):
-                found.append(v)
-            elif isinstance(v, dict):
-                for val in v.values():
-                    # tuples/lists of forces
-                    if isinstance(val, (tuple, list)):
-                        for item in val:
-                            if isinstance(item, openmm.Force):
-                                found.append(item)
-                    elif isinstance(val, openmm.Force):
-                        found.append(val)
-            elif isinstance(v, (tuple, list)):
-                for item in v:
-                    if isinstance(item, openmm.Force):
-                        found.append(item)
-        # fallback: wrapper.force
-        if hasattr(fwrap, 'force') and isinstance(getattr(fwrap, 'force'), openmm.Force) and getattr(fwrap, 'force') not in found:
-            found.append(getattr(fwrap, 'force'))
-        return found
 
     def add_forces(self, system, verbose=False):
         """Add the DNA forces to the openmm system, 
@@ -190,38 +162,38 @@ class EnvelopingDistributionSampling:
         # assigning each a unique name (a string)
         # and storing the {name: force} pairs in a dictionary.
         sequence_dependent_forces = {}
-        for mutant_sequence_index, mutant in enumerate(self.mutants): # loop over lists of mutations
+        for dna_index, dna in enumerate(self.dnas): # loop over lists of mutations
             if verbose:
-                print(f"Building forces for mutant {mutant_sequence_index}")
+                print(f"Building forces for mutant {dna_index}")
             for force_name, WrapperClass in forces.items(): # ignore sequence-independent_forces
                 if force_name == 'Electrostatics':
                     continue
                 elif force_name == 'BasePair':
-                    open3spn2_force = WrapperClass(mutant)
+                    open3spn2_force = WrapperClass(dna)
                     for force_index, openmm_force in open3spn2_force.forces.items():
-                        sequence_dependent_forces[f"{force_name}_{force_index}_{mutant_sequence_index}"] = openmm_force
+                        sequence_dependent_forces[f"{force_name}_{force_index}_{dna_index}"] = openmm_force
                 elif force_name == 'CrossStacking':
-                    open3spn2_force = WrapperClass(mutant)
+                    open3spn2_force = WrapperClass(dna)
                     for force_index, (openmm_force_c1, openmm_force_c2) in open3spn2_force.crossStackingForces.items():
-                        sequence_dependent_forces[f"{force_name}_{force_index}_c1_{mutant_sequence_index}"] = openmm_force_c1
-                        sequence_dependent_forces[f"{force_name}_{force_index}_c2_{mutant_sequence_index}"] = openmm_force_c2
+                        sequence_dependent_forces[f"{force_name}_{force_index}_c1_{dna_index}"] = openmm_force_c1
+                        sequence_dependent_forces[f"{force_name}_{force_index}_c2_{dna_index}"] = openmm_force_c2
                 else:
-                    sequence_dependent_forces[f"{force_name}_{mutant_sequence_index}"] = WrapperClass(mutant).force
+                    sequence_dependent_forces[f"{force_name}_{dna_index}"] = WrapperClass(dna).force
 
         # set up energy expression to be used for the CustomCVForce
         expr_start = '-0.0083145*300*log('
         expr_end = ')'
         expr_middle = ''
-        for mutant_sequence_index in range(len(self.mutants)):
+        for dna_index in range(len(self.dnas)):
             sub_expr_start = 'exp(-('
-            if mutant_sequence_index == len(self.mutants)-1:
+            if dna_index == len(self.dnas)-1:
                 sub_expr_end = ')/(0.0083145*300))'
             else:
                 sub_expr_end = ')/(0.0083145*300)+'     
             sub_expr_middle = ''       
             for force_name_index, key in enumerate(sequence_dependent_forces.keys()):
                 to_add = ''
-                if int(key.split('_')[-1]) == mutant_sequence_index:
+                if int(key.split('_')[-1]) == dna_index:
                     to_add += key
                 else:
                     continue
@@ -247,7 +219,7 @@ class EnvelopingDistributionSampling:
         self._cvforce = cv
 
         # not sure if these return values will be useful, can modify in the future if we want
-        return cv, self._mutant_forces
+        return cv, None
 
 
     @property 

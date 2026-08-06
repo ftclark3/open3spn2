@@ -258,9 +258,12 @@ class BasePair(DNAForce, openmm.CustomHbondForce):
                 if (atom_a.chainID == atom_b.chainID) and (abs(atom_a.resSeq - atom_b.resSeq) <= 2):
                     self.forces[i].addExclusion(atom_a['donor_id'], atom_b['aceptor_id'])
 
-    def addForce(self, system):
+    def addForce(self, system, name=None):
         for f in self.forces:
-            system.addForce(self.forces[f])
+            try:
+                system.addForce(self.forces[f])
+            except AttributeError:
+                system.addCollectiveVariable(name, self.forces[f]) # our "system" might actually be a CustomCVForce
 
 
 class CrossStacking(DNAForce):
@@ -411,10 +414,14 @@ class CrossStacking(DNAForce):
                         c1.addExclusion(ii, jj)
                         c2.addExclusion(jj, ii)
 
-    def addForce(self, system):
+    def addForce(self, system, name=None):
         for c1, c2 in self.crossStackingForces.values():
-            system.addForce(c1)
-            system.addForce(c2)
+            try:
+                system.addForce(c1)
+                system.addForce(c2)
+            except AttributeError:
+                system.addCollectiveVariable(name, c1) # our "system" might actually be a CustomCVForce
+                system.addCollectiveVariable(name, c2) # our "system" might actually be a CustomCVForce
 
     def getForceGroup(self):
         fg = 0

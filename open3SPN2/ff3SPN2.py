@@ -401,8 +401,11 @@ class DNA(object):
             residue = (mutant.atoms['chainID'] == mut['chainID']) & (mutant.atoms['resSeq'] == mut['resSeq'])
             base_bead = residue & mutant.atoms['name'].isin(base_names)
             if int(base_bead.sum()) != 1:
-                raise ValueError(f"Mutation {mut['chainID']}:{mut['resSeq']} matched {int(base_bead.sum())} "
-                                 f"base beads (expected exactly 1)")
+                if isinstance(mut['resSeq'], str):
+                    raise TypeError('Error due to resSeq not being an int')
+                else: 
+                    raise ValueError(f"Mutation {mut['chainID']}:{mut['resSeq']} matched {int(base_bead.sum())} "
+                                     f"base beads (expected exactly 1)")
             # The residue name is shared by all three beads (read by the angle base-matching).
             mutant.atoms.loc[residue, 'resname'] = 'D' + mut['target']
             mutant.atoms.loc[base_bead, 'name'] = mut['target']

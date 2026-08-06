@@ -116,23 +116,23 @@ class EnvelopingDistributionSampling:
 
     Parameters
     ----------
-    dna : DNA
-        The reference DNA (used to construct mutants).
+    starting_dna : DNA
+        The initial DNA sequence/structure, used to construct the appropriate Force objects for the mutants
     mutant_sets : iterable of iterables
         Each item is an iterable of mutation tuples defining a mutant sequence.
     force_group : int
         Force group to assign to the resulting CustomCVForce (default: 30).
     """
 
-    def __init__(self, dna, mutant_sets, force_group=30):
-        self.reference = dna
+    def __init__(self, starting_dna, mutant_sets, force_group=30):
+        self.starting_dna = starting_dna
         # Build mutant DNA objects
-        self.mutants = [dna.create_mutant(m) for m in mutant_sets]
+        self.mutants = [starting_dna.create_mutant(m) for m in mutant_sets]
         self.mutant_sets = mutant_sets
         self.force_group = force_group
         # Storage for created force wrappers and the collective-variable force
         self._mutant_forces = []  # list of dicts: for each mutant, {force_name: force_wrapper}
-        self.cvforce = None
+        self._cvforce = None
 
     @staticmethod
     def _collect_force_objects(fwrap):
@@ -162,70 +162,85 @@ class EnvelopingDistributionSampling:
         return found
 
     def add_forces(self, system, verbose=False):
-        """Create per-mutant forces (not added to `system`) and a CustomCVForce that combines them.
+        """Add the DNA forces to the openmm system, 
+           putting the sequence-dependent ones in a CustomCVForce
+           so that we can construct the Hamiltonian for enveloping distribution sampling.
 
         Returns a tuple (cvforce, mutant_forces) where mutant_forces is a list of per-mutant dicts.
         """
-        # Create per-mutant force wrapper instances but do not add them to the system.
-        self._mutant_forces = []
-        for m_idx, mutant in enumerate(self.mutants):
-            if verbose:
-                print(f"Building forces for mutant {m_idx}")
-            mf = {}
-            for fname, ForceClass in forces.items():
-                # Construct with k=1.0 and ignore k_name
-                try:
-                    fwrap = ForceClass(mutant, k=1.0)
-                except TypeError:
-                    # Some force constructors don't accept k; fall back to default
-                    fwrap = ForceClass(mutant)
-                mf[fname] = fwrap
-            self._mutant_forces.append(mf)
 
-        # Add a single Electrostatics force from the reference DNA to the system (option A)
+        # Electrostatics is always sequence-independent, 
+        # so we can add it to the openmm system as usual,
+        # without regard to the number and kind(s) of mutant sequence(s)
+        # that we want to explore with enveloping distribution sampling. 
+        # TODO: we should consider removing this block from this class
+        #       and instead ask the user to add the sequence-independent
+        #       terms to their openmm system outside of this class
         if 'Electrostatics' in forces:
-            ElecClass = forces['Electrostatics']
-            elec = ElecClass(self.reference)
+            WrapperClass = forces['Electrostatics']
+            elec = WrapperClass(self.starting_dna) # self.starting_dna is the DNA system that was 
+                                                   # constructed outside of this class,
+                                                   # and whose coordinates will become the 
+                                                   # initial configuration for the simulation.                            
             elec.addForce(system)
+        else:
+            raise ValueError(f"Expected 'Electrostatics' in standard open3SPN2 force dictionary forces, but got {forces}")
 
-        # Build the CustomCVForce expression: log( exp(sum_forces_mut0) + exp(sum_forces_mut1) + ... )
-        per_mutant_varnames = []
-        # We'll also keep a mapping from (m_idx, fname, subidx) -> forceobj for later inspection
-        self._cv_force_map = {}
-        for m_idx, mf in enumerate(self._mutant_forces):
-            varnames = []
-            for fname, fwrap in mf.items():
-                # Skip Electrostatics (we've added a single copy already)
-                if fname == 'Electrostatics':
+        # Initialize our sequence-dependent Open3SPN2 force wrapper classes,
+        # assigning each a unique name (a string)
+        # and storing the {name: force} pairs in a dictionary.
+        sequence_dependent_forces = {}
+        for mutant_sequence_index, mutant in enumerate(self.mutants): # loop over lists of mutations
+            if verbose:
+                print(f"Building forces for mutant {mutant_sequence_index}")
+            for force_name, WrapperClass in forces.items(): # ignore sequence-independent_forces
+                if force_name == 'Electrostatics':
                     continue
-                force_objs = EnvelopingDistributionSampling._collect_force_objects(fwrap)
-                if not force_objs:
-                    # If no underlying openmm Force found, try adding the wrapper itself if it
-                    # behaves like an openmm.Force
-                    if isinstance(fwrap, openmm.Force):
-                        force_objs = [fwrap]
-                for subidx, fobj in enumerate(force_objs):
-                    varname = f"{fname}_{m_idx}_{subidx}"
-                    varnames.append(varname)
-                    self._cv_force_map[(m_idx, fname, subidx)] = fobj
-            per_mutant_varnames.append(varnames)
+                sequence_dependent_forces[f"{force_name}_{mutant_sequence_index}"] = WrapperClass(mutant)
 
-        # per-mutant expression: (fname_0 + fname_1 + ...)
-        mutant_exprs = ["(" + "+".join(vs) + ")" if len(vs) > 0 else "(0)" for vs in per_mutant_varnames]
-        expr = "log(" + "+".join([f"exp({me})" for me in mutant_exprs]) + ")"
+        # set up energy expression to be used for the CustomCVForce
+        expr_start = '-0.0083145*300*log('
+        expr_end = ')'
+        expr_middle = ''
+        for mutant_sequence_index in range(len(self.mutants)):
+            sub_expr_start = 'exp(-('
+            if mutant_sequence_index == len(self.mutants)-1:
+                sub_expr_end = ')/(0.0083145*300))'
+            else:
+                sub_expr_end = ')/(0.0083145*300)+'     
+            sub_expr_middle = ''       
+            for force_name_index, key in enumerate(sequence_dependent_forces.keys()):
+                to_add = ''
+                if int(key.split('_')[-1]) == mutant_sequence_index:
+                    to_add += key
+                if force_name_index == len(sequence_dependent_forces.keys())-1:
+                    sub_expr_middle += to_add
+                else:
+                    sub_expr_middle += f'{to_add}+'
+            expr_middle += f'{sub_expr_start}{sub_expr_middle}{sub_expr_end}'
+        expr = f'{expr_start}{expr_middle}{expr_end}'
+        if verbose:
+            print(f'using expression {expr} for enveloping distribution sampling CustomCVForce')
 
+        # initialize and set up CustomCVForce for enveloping distribution sampling
         cv = openmm.CustomCVForce(expr)
         cv.setForceGroup(self.force_group)
+        for force_name, force_object in sequence_dependent_forces.items():
+            force_object.addForce(cv, name=force_name)
 
-        # Add collective variables linking to the per-force OpenMM Force objects
-        for (m_idx, fname, subidx), fobj in self._cv_force_map.items():
-            varname = f"{fname}_{m_idx}_{subidx}"
-            cv.addCollectiveVariable(varname, fobj)
-
-        # Add the combined CV force to the system
+        # Add the enveloping distribution sampling CV force to the openmm system
         system.addForce(cv)
-        self.cvforce = cv
+
+        # attach the enveloping distribution sampling CV force to this object for future reference
+        self._cvforce = cv
+
+        # not sure if these return values will be useful, can modify in the future if we want
         return cv, self._mutant_forces
 
+
+    @property 
+    def cvforce(self):
+        return self._cvforce
+    # for convenience and API consistency with AlchemicalTransformation
     def get_cvforce(self):
         return self.cvforce

@@ -27,10 +27,13 @@ class DNAForce(object):
             else:
                 raise AttributeError()
 
-    def addForce(self, system):
+    def addForce(self, system, name=None):
         """Add this force's OpenMM force to `system`. Forces that manage several OpenMM forces
         (e.g. BasePair, CrossStacking) override this to add all of them."""
-        system.addForce(self.force)
+        try:
+            system.addForce(self.force)
+        except AttributeError:
+            system.addCollectiveVariable(name, self.force) # our "system" might actually be a CustomCVForce
 
     def computeEnergy(self, system, trajectory):
         # Parse trajectory

@@ -223,6 +223,8 @@ class EnvelopingDistributionSampling:
                 to_add = ''
                 if int(key.split('_')[-1]) == mutant_sequence_index:
                     to_add += key
+                else:
+                    continue
                 if force_name_index == len(sequence_dependent_forces.keys())-1:
                     sub_expr_middle += to_add
                 else:

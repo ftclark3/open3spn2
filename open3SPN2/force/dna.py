@@ -53,6 +53,7 @@ class Bond(DNAForce, openmm.CustomBondForce):
         bondForce.addPerBondParameter('Kb3')
         bondForce.addPerBondParameter('Kb4')
         bondForce.addGlobalParameter(self.k_name, self.k)
+        bondForce.addEnergyParameterDerivative(self.k_name)
         bondForce.setUsesPeriodicBoundaryConditions(self.periodic)
         bondForce.setForceGroup(self.force_group)
         self.force = bondForce
@@ -80,6 +81,7 @@ class Angle(DNAForce, openmm.CustomAngleForce):
         angleForce.addPerAngleParameter('t0')
         angleForce.addPerAngleParameter('k')
         angleForce.addGlobalParameter(self.k_name, self.k)
+        angleForce.addEnergyParameterDerivative(self.k_name)
         angleForce.setUsesPeriodicBoundaryConditions(self.periodic)
         angleForce.setForceGroup(self.force_group)
         self.force = angleForce
@@ -117,6 +119,7 @@ class Stacking(DNAForce, openmm.CustomCompoundBondForce):
         stackingForce.addPerBondParameter('rng')
         stackingForce.addGlobalParameter('pi', np.pi)
         stackingForce.addGlobalParameter(self.k_name, self.k)
+        stackingForce.addEnergyParameterDerivative(self.k_name)
         stackingForce.setForceGroup(self.force_group)
         self.force = stackingForce
 
@@ -151,6 +154,7 @@ class Dihedral(DNAForce, openmm.CustomTorsionForce):
         dihedralForce.addGlobalParameter('pi', np.pi)
         dihedralForce.addGlobalParameter(self.k_name, self.k)
         dihedralForce.setForceGroup(self.force_group)
+        dihedralForce.addEnergyParameterDerivative(self.k_name)
         self.force = dihedralForce
 
     def defineInteraction(self):
@@ -206,6 +210,7 @@ class BasePair(DNAForce, openmm.CustomHbondForce):
             pairForce.addPerAcceptorParameter('seqid_a')
             pairForce.addGlobalParameter('pi', np.pi)
             pairForce.addGlobalParameter(self.k_name, self.k)
+            #pairForce.addEnergyParameterDerivative(self.k_name)
             self.force = pairForce
             pairForce.setForceGroup(self.force_group)
             return pairForce
@@ -321,6 +326,7 @@ class CrossStacking(DNAForce):
             crossForce.addPerAcceptorParameter('seqid_a')
             crossForce.addGlobalParameter('pi', np.pi)
             crossForce.addGlobalParameter(self.k_name, self.k)
+            #crossForce.addEnergyParameterDerivative(self.k_name)
             crossForce.setForceGroup(self.force_group)
             return crossForce
 
@@ -471,6 +477,7 @@ class Exclusion(DNAForce, openmm.CustomNonbondedForce):
         exclusionForce.addPerParticleParameter('bt')
         exclusionForce.addPerParticleParameter('seqid')
         exclusionForce.addGlobalParameter(self.k_name, self.k)
+        exclusionForce.addEnergyParameterDerivative(self.k_name)
         exclusionForce.setCutoffDistance(1.8)
         exclusionForce.setForceGroup(self.force_group)  # There can not be multiple cutoff distance on the same force group
         if self.periodic:
@@ -555,6 +562,7 @@ class Electrostatics(DNAForce, openmm.CustomNonbondedForce):
         electrostaticForce.addGlobalParameter('dh_length', ldby)
         electrostaticForce.addGlobalParameter('denominator', denominator)
         electrostaticForce.addGlobalParameter(self.k_name, self.k)
+        electrostaticForce.addEnergyParameterDerivative(self.k_name)
 
 
         electrostaticForce.setCutoffDistance(cutoff_nm)
